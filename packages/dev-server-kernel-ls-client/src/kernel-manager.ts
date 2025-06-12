@@ -3,7 +3,6 @@ import { events, tables } from '@anode/schema';
 import { PyodideKernel } from './pyodide-kernel.js';
 
 export interface KernelManagerConfig {
-  notebookId: string;
   heartbeatInterval?: number; // ms, default 30s
   executionTimeout?: number; // ms, default 5 minutes
   claimBatchSize?: number; // max executions to claim at once, default 5
@@ -61,7 +60,7 @@ export class KernelManager {
 
     this.store.commit(events.kernelRegistered({
       id: this.kernelId,
-      notebookId: this.config.notebookId,
+      notebookId: 'any', // This kernel can handle any notebook in the store
       registeredAt: now,
       capabilities: {
         language: 'python',
@@ -70,8 +69,6 @@ export class KernelManager {
       },
       metadata: {
         nodeVersion: process.version,
-        pid: process.pid,
-        platform: process.platform,
       },
     }));
   }
@@ -89,11 +86,10 @@ export class KernelManager {
   }
 
   private startExecutionMonitoring(): void {
-    // Subscribe to queued executions for this notebook
+    // Subscribe to queued executions for any notebook in this store
     const queuedExecutions$ = queryDb(
       tables.executions.where({
         status: 'queued',
-        // We could filter by notebook if we add that to executions table
       }).orderBy('createdAt', 'asc')
     );
     this.store.subscribe(queuedExecutions$, {
@@ -102,15 +98,16 @@ export class KernelManager {
           console.debug('[KernelManager] onUpdate for queuedExecutions$', executions);
           if (this.isShuttingDown || executions.length === 0) return;
 
-          // Only process executions for our notebook
+          // Process all executions in this store
           const relevantExecutions = executions.filter((exec: typeof tables.executions.Type) => {
             const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0] as typeof tables.cells.Type | undefined;
-            const isRelevant = cell?.notebookId === this.config.notebookId;
-          if (!isRelevant) {
-            console.debug(`[KernelManager] Skipping execution ${exec.id} (cellId: ${exec.cellId}) not for notebook ${this.config.notebookId}`);
-          }
-          return isRelevant;
-        });
+            if (!cell) {
+              console.debug(`[KernelManager] Skipping execution ${exec.id} - cell ${exec.cellId} not found`);
+              return false;
+            }
+            console.debug(`[KernelManager] Found execution ${exec.id} for cell ${exec.cellId} in notebook ${cell.notebookId}`);
+            return true;
+          });
 
         if (relevantExecutions.length === 0) {
           console.debug('[KernelManager] No relevant executions to claim.');
@@ -305,7 +302,6 @@ export class KernelManager {
   private checkForDeadKernels(): void {
     const now = new Date();
     const kernels = this.store.query(tables.kernels.where({
-      notebookId: this.config.notebookId,
       status: 'active',
     }));
 

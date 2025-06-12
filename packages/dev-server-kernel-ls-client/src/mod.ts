@@ -10,14 +10,14 @@ import { makeCfSync } from "@livestore/sync-cf";
 import { events, schema, tables } from "@anode/schema";
 import { KernelManager } from "./kernel-manager.js";
 
-const NOTEBOOK_ID = process.env.NOTEBOOK_ID ?? "demo-notebook";
+const STORE_ID = process.env.STORE_ID ?? "test-store";
 const AUTH_TOKEN = process.env.AUTH_TOKEN ?? "insecure-token-change-me";
 const SYNC_URL = process.env.LIVESTORE_SYNC_URL ?? "ws://localhost:8787";
 
 console.log(
-  `🔗 Starting kernel adapter for notebook '${NOTEBOOK_ID}' (sync: ${SYNC_URL})`,
+  `🔗 Starting kernel adapter for store '${STORE_ID}' (sync: ${SYNC_URL})`,
 );
-console.log(`📝 Store ID will be: ${NOTEBOOK_ID}`);
+console.log(`📝 Store ID will be: ${STORE_ID}`);
 console.log(`🔑 Auth token: ${AUTH_TOKEN}`);
 
 const adapter = makeAdapter({
@@ -28,18 +28,17 @@ const adapter = makeAdapter({
   },
 });
 
-console.log(`🏪 Creating store with storeId: ${NOTEBOOK_ID}...`);
+console.log(`🏪 Creating store with storeId: ${STORE_ID}...`);
 const store = await createStorePromise({
   adapter,
   schema,
-  storeId: NOTEBOOK_ID,
-  syncPayload: { authToken: AUTH_TOKEN, kernel: true },
+  storeId: STORE_ID,
+  syncPayload: { authToken: AUTH_TOKEN },
 });
 console.log(`✅ Store created successfully`);
 
 // Initialize the new kernel manager
 const kernelManager = new KernelManager(store, {
-  notebookId: NOTEBOOK_ID,
   heartbeatInterval: 30_000, // 30 seconds
   executionTimeout: 5 * 60 * 1000, // 5 minutes
   claimBatchSize: 3, // Process up to 3 executions concurrently
@@ -61,6 +60,10 @@ console.log(`   - Cells: ${allCells.length}`);
 console.log(`   - Kernels: ${allKernels.length}`);
 console.log(`   - Executions: ${allExecutions.length}`);
 
+const activeKernels = allKernels.filter(k => k.status === 'active').length;
+console.log(`   - Active kernels: ${activeKernels}`);
+
+console.log(`📚 Found ${allNotebooks.length} notebooks in store. Kernel will process executions for any notebook.`);
 if (allNotebooks.length > 0) {
   console.log(`   - Notebook IDs: ${allNotebooks.map(n => n.id).join(', ')}`);
 }

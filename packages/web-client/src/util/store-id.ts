@@ -5,8 +5,10 @@ export const getStoreId = () => {
   const storeId = searchParams.get('storeId')
   if (storeId !== null) return storeId
 
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
+  // Use test-store as default for development
+  const defaultStoreId = 'test-store'
+  searchParams.set('storeId', defaultStoreId)
 
   window.location.search = searchParams.toString()
+  return defaultStoreId
 }

@@ -40,11 +40,11 @@ pnpm install
 
 # OR start services individually for debugging
 pnpm build:schema                    # Required first
-pnpm --filter @anode/docworker dev        # Sync server (port 8787)
-pnpm --filter @anode/web-client dev       # Web app (port 5173)
+pnpm run dev:sync-only      # Sync server (port 8787)
+pnpm run dev:web-only       # Web app (port 5173)
 
 # Start kernel process for specific notebook (optional)
-NOTEBOOK_ID=my-notebook pnpm --filter @anode/dev-server-kernel-ls-client dev
+STORE_ID=test-store pnpm run dev:kernel
 ```
 
 ### **Access Points**
