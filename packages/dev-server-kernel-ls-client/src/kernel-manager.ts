@@ -6,23 +6,24 @@ export interface KernelManagerConfig {
   heartbeatInterval?: number; // ms, default 30s
   executionTimeout?: number; // ms, default 5 minutes
   claimBatchSize?: number; // max executions to claim at once, default 5
+  notebookId?: string; // optional notebook ID
 }
 
 export class KernelManager {
-  private readonly store: Store;
+  private readonly store: Store<any, any>;
   private readonly config: KernelManagerConfig;
   private readonly kernelId: string;
   private readonly kernel: PyodideKernel;
 
-  private heartbeatTimer: NodeJS.Timer | null = null;
-  private timeoutCheckTimer: NodeJS.Timer | null = null;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private timeoutCheckTimer: NodeJS.Timeout | null = null;
   private isShuttingDown = false;
   private activeExecutions = new Map<string, {
     startedAt: Date;
     lastProgress: Date;
   }>();
 
-  constructor(store: Store, config: KernelManagerConfig) {
+  constructor(store: Store<any, any>, config: KernelManagerConfig) {
     this.store = store;
     this.config = {
       heartbeatInterval: 30_000, // 30 seconds
@@ -31,11 +32,11 @@ export class KernelManager {
       ...config,
     };
     this.kernelId = `kernel-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this.kernel = new PyodideKernel(config.notebookId);
+    this.kernel = new PyodideKernel(config.notebookId || 'default');
   }
 
   async initialize(): Promise<void> {
-    console.log(`🎯 Initializing KernelManager ${this.kernelId} for notebook ${this.config.notebookId}`);
+    console.log(`🎯 Initializing KernelManager ${this.kernelId} for notebook ${this.config.notebookId || 'default'}`);
 
     // Initialize the Python kernel
     await this.kernel.initialize();
@@ -100,7 +101,8 @@ export class KernelManager {
 
           // Process all executions in this store
           const relevantExecutions = executions.filter((exec: typeof tables.executions.Type) => {
-            const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0] as typeof tables.cells.Type | undefined;
+            const cellResults = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1)) as any[];
+            const cell = cellResults[0] as typeof tables.cells.Type | undefined;
             if (!cell) {
               console.debug(`[KernelManager] Skipping execution ${exec.id} - cell ${exec.cellId} not found`);
               return false;
@@ -167,7 +169,8 @@ export class KernelManager {
 
     try {
       // Get the cell
-      const cell = this.store.query(tables.cells.where({ id: cellId }).limit(1))[0];
+      const cellResults = this.store.query(tables.cells.where({ id: cellId }).limit(1)) as any[];
+      const cell = cellResults[0];
       if (!cell) {
         throw new Error(`Cell ${cellId} not found`);
       }
@@ -303,7 +306,7 @@ export class KernelManager {
     const now = new Date();
     const kernels = this.store.query(tables.kernels.where({
       status: 'active',
-    }));
+    })) as any[];
 
     for (const kernel of kernels) {
       const timeSinceHeartbeat = now.getTime() - kernel.lastHeartbeat.getTime();
@@ -330,7 +333,6 @@ export class KernelManager {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
-
     if (this.timeoutCheckTimer) {
       clearInterval(this.timeoutCheckTimer);
       this.timeoutCheckTimer = null;
@@ -349,7 +351,7 @@ export class KernelManager {
         claimedBy: this.kernelId,
         status: 'claimed',
       })
-    );
+    ) as any[];
 
     for (const execution of claimedExecutions) {
       this.store.commit(events.executionReleased({
