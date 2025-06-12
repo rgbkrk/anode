@@ -76,30 +76,45 @@ export const Cell: React.FC<CellProps> = ({
       return
     }
 
-    console.log('🚀 Executing cell via LiveStore events:', cell.id, 'in notebook:', cell.notebookId)
+    console.log('🚀 Executing cell via execution queue:', cell.id, 'in notebook:', cell.notebookId)
 
     try {
+      const executionCount = (cell.executionCount || 0) + 1;
+      const executionId = `exec-${cell.id}-${executionCount}`;
+      const now = new Date();
+
       // Clear previous outputs first
       store.commit(events.cellOutputsCleared({
         cellId: cell.id,
         clearedBy: 'current-user',
       }))
 
-      // Emit CellExecutionRequested event - kernel service will pick this up
+      // Queue execution using new execution queue system
+      store.commit(events.executionQueued({
+        id: executionId,
+        cellId: cell.id,
+        executionCount: executionCount,
+        requestedBy: 'current-user',
+        queuedAt: now,
+        timeoutAfter: new Date(now.getTime() + 5 * 60 * 1000), // 5 minute timeout
+      }))
+
+      // Also emit legacy event for backward compatibility
       store.commit(events.cellExecutionRequested({
         cellId: cell.id,
         notebookId: cell.notebookId,
         requestedBy: 'current-user',
-        executionCount: (cell.executionCount || 0) + 1,
+        executionCount: executionCount,
       }))
 
-      console.log('✅ Execution request sent via LiveStore event')
+      console.log('✅ Execution queued via execution queue system')
 
       // The kernel service will now:
-      // 1. See the CellExecutionRequested event
-      // 2. Execute the code
-      // 3. Emit CellExecutionStarted, CellOutputAdded, CellExecutionCompleted events
-      // 4. All clients will see the results in real-time!
+      // 1. See the execution in the queue
+      // 2. Claim the execution
+      // 3. Execute the code with proper timeout handling
+      // 4. Emit progress updates and completion events
+      // 5. All clients will see the results in real-time!
 
     } catch (error) {
       console.error('❌ LiveStore execution error:', error)
@@ -111,7 +126,7 @@ export const Cell: React.FC<CellProps> = ({
         outputType: 'error',
         data: {
           ename: 'LiveStoreError',
-          evalue: error instanceof Error ? error.message : 'Failed to emit execution request',
+          evalue: error instanceof Error ? error.message : 'Failed to queue execution request',
           traceback: ['Error occurred while emitting LiveStore event'],
         },
         position: 0,

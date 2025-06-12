@@ -15,6 +15,38 @@ export const tables: Record<string, any> = {
     },
   }),
 
+  // Kernel management tables
+  kernels: State.SQLite.table({
+    name: 'kernels',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      notebookId: State.SQLite.text(),
+      status: State.SQLite.text({ default: 'starting' }), // 'starting', 'active', 'shutting_down', 'dead'
+      lastHeartbeat: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      registeredAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      capabilities: State.SQLite.json({ schema: Schema.Any, nullable: true }), // version, features, etc.
+      metadata: State.SQLite.json({ schema: Schema.Any, nullable: true }), // process info, etc.
+    },
+  }),
+
+  executions: State.SQLite.table({
+    name: 'executions',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      cellId: State.SQLite.text(),
+      executionCount: State.SQLite.integer(),
+      status: State.SQLite.text({ default: 'queued' }), // 'queued', 'claimed', 'running', 'completed', 'failed', 'timeout'
+      claimedBy: State.SQLite.text({ nullable: true }), // kernel ID
+      claimedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      startedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      completedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      lastProgress: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      timeoutAfter: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      requestedBy: State.SQLite.text(),
+    },
+  }),
+
   cells: State.SQLite.table({
     name: 'cells',
     columns: {
@@ -97,6 +129,96 @@ export const events = {
     }),
   }),
 
+  // Kernel management events
+  kernelRegistered: Events.synced({
+    name: 'v1.KernelRegistered',
+    schema: Schema.Struct({
+      id: Schema.String,
+      notebookId: Schema.String,
+      capabilities: Schema.optional(Schema.Any),
+      metadata: Schema.optional(Schema.Any),
+      registeredAt: Schema.Date,
+    }),
+  }),
+
+  kernelHeartbeat: Events.synced({
+    name: 'v1.KernelHeartbeat',
+    schema: Schema.Struct({
+      kernelId: Schema.String,
+      timestamp: Schema.Date,
+      status: Schema.Literal('active', 'shutting_down'),
+    }),
+  }),
+
+  kernelShutdown: Events.synced({
+    name: 'v1.KernelShutdown',
+    schema: Schema.Struct({
+      kernelId: Schema.String,
+      shutdownAt: Schema.Date,
+      reason: Schema.optional(Schema.String),
+    }),
+  }),
+
+  kernelTimeout: Events.synced({
+    name: 'v1.KernelTimeout',
+    schema: Schema.Struct({
+      kernelId: Schema.String,
+      timeoutAt: Schema.Date,
+      lastHeartbeat: Schema.Date,
+    }),
+  }),
+
+  // Execution queue events
+  executionQueued: Events.synced({
+    name: 'v1.ExecutionQueued',
+    schema: Schema.Struct({
+      id: Schema.String,
+      cellId: Schema.String,
+      executionCount: Schema.Number,
+      requestedBy: Schema.String,
+      queuedAt: Schema.Date,
+      timeoutAfter: Schema.optional(Schema.Date),
+    }),
+  }),
+
+  executionClaimed: Events.synced({
+    name: 'v1.ExecutionClaimed',
+    schema: Schema.Struct({
+      executionId: Schema.String,
+      kernelId: Schema.String,
+      claimedAt: Schema.Date,
+    }),
+  }),
+
+  executionProgress: Events.synced({
+    name: 'v1.ExecutionProgress',
+    schema: Schema.Struct({
+      executionId: Schema.String,
+      kernelId: Schema.String,
+      progressAt: Schema.Date,
+      details: Schema.optional(Schema.Any),
+    }),
+  }),
+
+  executionTimeout: Events.synced({
+    name: 'v1.ExecutionTimeout',
+    schema: Schema.Struct({
+      executionId: Schema.String,
+      kernelId: Schema.String,
+      timeoutAt: Schema.Date,
+    }),
+  }),
+
+  executionReleased: Events.synced({
+    name: 'v1.ExecutionReleased',
+    schema: Schema.Struct({
+      executionId: Schema.String,
+      kernelId: Schema.String,
+      releasedAt: Schema.Date,
+      reason: Schema.String,
+    }),
+  }),
+
   notebookTitleChanged: Events.synced({
     name: 'v1.NotebookTitleChanged',
     schema: Schema.Struct({
@@ -153,7 +275,7 @@ export const events = {
     }),
   }),
 
-  // Execution events (for kernel integration)
+  // Execution events (for kernel integration) - DEPRECATED: Use execution queue events instead
   cellExecutionRequested: Events.synced({
     name: 'v1.CellExecutionRequested',
     schema: Schema.Struct({
@@ -274,6 +396,80 @@ const materializers = State.SQLite.materializers(events, {
       lastModified: createdAt
     }),
 
+  // Kernel management materializers
+  'v1.KernelRegistered': ({ id, notebookId, capabilities, metadata, registeredAt }) =>
+    tables.kernels.insert({
+      id,
+      notebookId,
+      status: 'active',
+      lastHeartbeat: registeredAt,
+      registeredAt,
+      capabilities,
+      metadata,
+    }),
+
+  'v1.KernelHeartbeat': ({ kernelId, timestamp, status }) =>
+    tables.kernels.update({
+      lastHeartbeat: timestamp,
+      status,
+    }).where({ id: kernelId }),
+
+  'v1.KernelShutdown': ({ kernelId }) =>
+    tables.kernels.update({
+      status: 'dead',
+    }).where({ id: kernelId }),
+
+  'v1.KernelTimeout': ({ kernelId }) => [
+    tables.kernels.update({
+      status: 'dead',
+    }).where({ id: kernelId }),
+    // Release any executions claimed by this kernel
+    tables.executions.update({
+      status: 'queued',
+      claimedBy: null,
+      claimedAt: null,
+    }).where({ claimedBy: kernelId, status: 'claimed' }),
+    tables.executions.update({
+      status: 'timeout',
+    }).where({ claimedBy: kernelId, status: 'running' }),
+  ],
+
+  // Execution queue materializers
+  'v1.ExecutionQueued': ({ id, cellId, executionCount, requestedBy, queuedAt, timeoutAfter }) =>
+    tables.executions.insert({
+      id,
+      cellId,
+      executionCount,
+      status: 'queued',
+      requestedBy,
+      createdAt: queuedAt,
+      timeoutAfter,
+    }),
+
+  'v1.ExecutionClaimed': ({ executionId, kernelId, claimedAt }) =>
+    tables.executions.update({
+      status: 'claimed',
+      claimedBy: kernelId,
+      claimedAt,
+    }).where({ id: executionId }),
+
+  'v1.ExecutionProgress': ({ executionId, progressAt }) =>
+    tables.executions.update({
+      lastProgress: progressAt,
+    }).where({ id: executionId }),
+
+  'v1.ExecutionTimeout': ({ executionId }) =>
+    tables.executions.update({
+      status: 'timeout',
+    }).where({ id: executionId }),
+
+  'v1.ExecutionReleased': ({ executionId, releasedAt, reason }) =>
+    tables.executions.update({
+      status: reason === 'timeout' ? 'timeout' : 'queued',
+      claimedBy: null,
+      claimedAt: null,
+    }).where({ id: executionId }),
+
   'v1.NotebookTitleChanged': ({ id, title, lastModified }) => [
     tables.notebooks.update({ title, lastModified }).where({ id }),
   ],
@@ -304,20 +500,43 @@ const materializers = State.SQLite.materializers(events, {
   'v1.CellMoved': ({ id, newPosition }) =>
     tables.cells.update({ position: newPosition }).where({ id }),
 
-  // Execution materializers
-  'v1.CellExecutionRequested': ({ cellId, executionCount }) =>
+  // Execution materializers - DEPRECATED: Use execution queue events instead
+  'v1.CellExecutionRequested': ({ cellId, executionCount }) => [
     tables.cells.update({
       executionState: 'pending',
       executionCount
     }).where({ id: cellId }),
+    // Also create execution queue entry for new queue system
+    tables.executions.insert({
+      id: `exec-${cellId}-${executionCount}`,
+      cellId,
+      executionCount,
+      status: 'queued',
+      requestedBy: 'legacy-system',
+      createdAt: new Date(),
+      timeoutAfter: new Date(Date.now() + 5 * 60 * 1000), // 5 minute timeout
+    }),
+  ],
 
-  'v1.CellExecutionStarted': ({ cellId }) =>
+  'v1.CellExecutionStarted': ({ cellId, executionCount }) => [
     tables.cells.update({ executionState: 'running' }).where({ id: cellId }),
+    // Update execution queue
+    tables.executions.update({
+      status: 'running',
+      startedAt: new Date(),
+    }).where({ cellId, executionCount }),
+  ],
 
-  'v1.CellExecutionCompleted': ({ cellId, status }) =>
+  'v1.CellExecutionCompleted': ({ cellId, executionCount, status, completedAt }) => [
     tables.cells.update({
       executionState: status === 'success' ? 'completed' : 'error'
     }).where({ id: cellId }),
+    // Update execution queue
+    tables.executions.update({
+      status: status === 'success' ? 'completed' : 'failed',
+      completedAt,
+    }).where({ cellId, executionCount }),
+  ],
 
   // Output materializers
   'v1.CellOutputAdded': ({ id, cellId, outputType, data, position, createdAt }) =>

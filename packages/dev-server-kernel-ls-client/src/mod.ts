@@ -1,15 +1,14 @@
-// LiveStore <-> Pyodide kernel adapter.
-// Runs as a standalone process and listens for CellExecutionRequested
-// events inside a particular notebook (storeId). It then executes the code
-// with Pyodide and commits output events back to LiveStore.
+// LiveStore <-> Pyodide kernel adapter using proper execution queue management.
+// Runs as a standalone process and uses KernelManager to handle execution ownership,
+// timeouts, and graceful handover between multiple kernel instances.
 
 import { makeAdapter } from "@livestore/adapter-node";
-import { createStorePromise, queryDb } from "@livestore/livestore";
+import { createStorePromise } from "@livestore/livestore";
 import { makeCfSync } from "@livestore/sync-cf";
 
 // Import the same schema used by the web client so we share events/tables.
 import { events, schema, tables } from "@anode/schema";
-import { PyodideKernel } from "./pyodide-kernel.js";
+import { KernelManager } from "./kernel-manager.js";
 
 const NOTEBOOK_ID = process.env.NOTEBOOK_ID ?? "demo-notebook";
 const AUTH_TOKEN = process.env.AUTH_TOKEN ?? "insecure-token-change-me";
@@ -38,20 +37,78 @@ const store = await createStorePromise({
 });
 console.log(`✅ Store created successfully`);
 
-const kernel = new PyodideKernel(NOTEBOOK_ID);
-await kernel.initialize();
+// Initialize the new kernel manager
+const kernelManager = new KernelManager(store, {
+  notebookId: NOTEBOOK_ID,
+  heartbeatInterval: 30_000, // 30 seconds
+  executionTimeout: 5 * 60 * 1000, // 5 minutes
+  claimBatchSize: 3, // Process up to 3 executions concurrently
+});
 
-console.log("✅ Kernel ready. Setting up debugging and subscriptions...");
+await kernelManager.initialize();
 
-// Track processed execution counts to prevent re-execution
-const processedExecutions = new Map<string, number>();
+console.log("✅ Kernel manager ready. Setting up legacy event compatibility...");
+
+// For backward compatibility, still listen to legacy cellExecutionRequested events
+// and convert them to the new execution queue system
+const legacyExecutionRequests$ = store.query(
+  tables.cells.where({
+    executionState: 'pending'
+  }).orderBy('executionCount', 'desc')
+);
+
+store.subscribe(legacyExecutionRequests$, {
+  onUpdate: async (cells) => {
+    if (cells.length === 0) return;
+
+    console.log(`🔄 Processing ${cells.length} legacy execution requests`);
+
+    for (const cell of cells) {
+      if (!cell.executionCount) continue;
+
+      // Check if we already have an execution queue entry for this
+      const existingExecution = store.query(
+        tables.executions.where({
+          cellId: cell.id,
+          executionCount: cell.executionCount,
+        }).limit(1)
+      )[0];
+
+      if (existingExecution) {
+        console.log(`⏭️ Execution already queued: ${cell.id}#${cell.executionCount}`);
+        continue;
+      }
+
+      // Create execution queue entry
+      const executionId = `exec-${cell.id}-${cell.executionCount}`;
+      const now = new Date();
+
+      console.log(`📥 Queueing legacy execution: ${executionId}`);
+
+      store.commit(events.executionQueued({
+        id: executionId,
+        cellId: cell.id,
+        executionCount: cell.executionCount,
+        requestedBy: 'legacy-system',
+        queuedAt: now,
+        timeoutAfter: new Date(now.getTime() + 5 * 60 * 1000), // 5 minute timeout
+      }));
+    }
+  }
+});
 
 // Debug: Check what's in the store initially
 const allNotebooks = store.query(tables.notebooks);
 const allCells = store.query(tables.cells);
+const allKernels = store.query(tables.kernels);
+const allExecutions = store.query(tables.executions);
+
 console.log(`📊 Initial store state:`);
 console.log(`   - Notebooks: ${allNotebooks.length}`);
 console.log(`   - Cells: ${allCells.length}`);
+console.log(`   - Kernels: ${allKernels.length}`);
+console.log(`   - Executions: ${allExecutions.length}`);
+
 if (allNotebooks.length > 0) {
   console.log(`   - Notebook IDs: ${allNotebooks.map(n => n.id).join(', ')}`);
 }
@@ -59,139 +116,13 @@ if (allCells.length > 0) {
   console.log(`   - Cell IDs: ${allCells.map(c => c.id).join(', ')}`);
   console.log(`   - Cell notebook IDs: ${allCells.map(c => c.notebookId).join(', ')}`);
 }
-
-console.log("🔍 Subscribing to CellExecutionRequested events...");
-
-// Debug: Subscribe to ALL cells first to see what's happening
-const allCells$ = queryDb(
-  tables.cells,
-  { label: 'allCells' }
-);
-
-store.subscribe(allCells$, {
-  onUpdate: (cells: any) => {
-    console.log(`🔍 ALL CELLS UPDATE (${cells.length} total):`);
-    cells.forEach((cell: any) => {
-      console.log(`   - Cell ${cell.id}: notebook=${cell.notebookId}, state=${cell.executionState}, count=${cell.executionCount}`);
-    });
-  }
-});
-
-// Subscribe to execution request events using a query
-// Quick fix: process ALL pending cells since we're using notebook-specific stores
-const executionRequests$ = queryDb(
-  tables.cells.where({
-    executionState: 'pending'
-  }).orderBy('executionCount', 'desc'),
-  { label: 'executionRequests' }
-);
-
-console.log(`🎯 Looking for ALL pending cells (store-specific approach)`);
-
-store.subscribe(executionRequests$, {
-  onUpdate: async (cells: any) => {
-    console.log(`🔔 EXECUTION REQUESTS UPDATE: ${cells.length} pending cells`);
-
-    // Process each pending cell
-    for (const cell of cells) {
-      if (!cell.executionCount) {
-        console.log(`⏭️ Skipping cell ${cell.id} - no execution count`);
-        continue; // Skip if no execution requested
-      }
-
-      // Check if we've already processed this execution
-      const lastProcessed = processedExecutions.get(cell.id);
-      if (lastProcessed && lastProcessed >= cell.executionCount) {
-        console.log(`⏭️ Skipping cell ${cell.id} - already processed execution ${cell.executionCount} (last: ${lastProcessed})`);
-        continue;
-      }
-
-      console.log(`⚡ Processing execution request for cell ${cell.id} (notebook: ${cell.notebookId})`);
-      console.log(`   - Target notebook: ${NOTEBOOK_ID} (store ID)`);
-      console.log(`   - Actual notebook: ${cell.notebookId}`);
-      console.log(`   - Execution count: ${cell.executionCount}`);
-      console.log(`   - Source length: ${(cell.source || '').length} chars`);
-      console.log(`   - Last processed: ${lastProcessed || 'none'}`);
-
-      // Mark this execution as being processed
-      processedExecutions.set(cell.id, cell.executionCount);
-
-      try {
-        // Mark start with error handling
-        try {
-          store.commit(events.cellExecutionStarted({
-            cellId: cell.id,
-            executionCount: cell.executionCount,
-            startedAt: new Date(),
-          }));
-        } catch (commitError) {
-          console.warn(`⚠️ Error committing cellExecutionStarted for ${cell.id}:`, commitError);
-        }
-
-        // Clear previous outputs with error handling
-        try {
-          store.commit(events.cellOutputsCleared({
-            cellId: cell.id,
-            clearedBy: "kernel-adapter",
-          }));
-        } catch (commitError) {
-          console.warn(`⚠️ Error committing cellOutputsCleared for ${cell.id}:`, commitError);
-        }
-
-        // Execute code
-        const outputs = await kernel.execute(cell.source ?? "");
-
-        // Emit outputs with error handling
-        outputs.forEach((out, idx) => {
-          try {
-            store.commit(events.cellOutputAdded({
-              id: crypto.randomUUID(),
-              cellId: cell.id,
-              outputType: out.type as any,
-              data: out.data,
-              position: idx,
-              createdAt: new Date(),
-            }));
-          } catch (commitError) {
-            console.warn(`⚠️ Error committing cellOutputAdded for ${cell.id} output ${idx}:`, commitError);
-          }
-        });
-
-        // Completion status with error handling
-        const status = outputs.some((o) => o.type === "error") ? "error" : "success";
-        try {
-          store.commit(events.cellExecutionCompleted({
-            cellId: cell.id,
-            executionCount: cell.executionCount,
-            completedAt: new Date(),
-            status,
-          }));
-        } catch (commitError) {
-          console.warn(`⚠️ Error committing cellExecutionCompleted for ${cell.id}:`, commitError);
-        }
-
-        console.log(`✅ Cell ${cell.id} executed (${status}) - ${outputs.length} outputs`);
-      } catch (error) {
-        console.error(`❌ Error executing cell ${cell.id}:`, error);
-
-        // Mark as error with error handling
-        try {
-          store.commit(events.cellExecutionCompleted({
-            cellId: cell.id,
-            executionCount: cell.executionCount,
-            completedAt: new Date(),
-            status: "error",
-          }));
-        } catch (commitError) {
-          console.error(`💥 Failed to mark cell ${cell.id} as error:`, commitError);
-        }
-      }
-
-      // Add a small delay between cell executions to reduce concurrency pressure
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-});
+if (allKernels.length > 0) {
+  console.log(`   - Active kernels: ${allKernels.filter(k => k.status === 'active').length}`);
+}
+if (allExecutions.length > 0) {
+  console.log(`   - Queued executions: ${allExecutions.filter(e => e.status === 'queued').length}`);
+  console.log(`   - Running executions: ${allExecutions.filter(e => e.status === 'running').length}`);
+}
 
 // Graceful shutdown
 let running = true;
@@ -199,17 +130,34 @@ const shutdown = async () => {
   if (!running) return;
   running = false;
   console.log("🛑 Shutting down kernel adapter…");
+
+  // Shutdown kernel manager first (this will release claimed executions)
+  await kernelManager.shutdown();
+
+  // Then shutdown store
   await store.shutdown?.();
-  await kernel.terminate();
+
   process.exit(0);
 };
 
 // Add signal listeners for graceful shutdown
-// Back in node.js though
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-console.log("🎉 Kernel adapter operational. Press Ctrl+C to stop.");
+// Monitor kernel health
+setInterval(() => {
+  if (kernelManager.isActive()) {
+    const activeExecutions = kernelManager.getActiveExecutions();
+    if (activeExecutions.length > 0) {
+      console.log(`🔄 Kernel ${kernelManager.getKernelId()} processing ${activeExecutions.length} executions`);
+    }
+  }
+}, 60_000); // Log status every minute
+
+console.log("🎉 Kernel adapter operational with execution queue management.");
+console.log(`🔧 Kernel ID: ${kernelManager.getKernelId()}`);
+console.log("📡 Waiting for execution requests...");
+console.log("🔌 Press Ctrl+C to stop");
 
 // Keep process alive
 while (running) {

@@ -9,7 +9,8 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "watch": "tsx watch src/index.ts",
-    "cleanup-state": "tsx src/cleanup-state.ts"
+    "cleanup-state": "tsx src/cleanup-state.ts",
+    "monitor-queue": "tsx src/monitor-queue.ts"
   },
   "dependencies": {
     "@anode/schema": "workspace:*",
