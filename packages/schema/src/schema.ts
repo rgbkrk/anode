@@ -501,29 +501,18 @@ const materializers = State.SQLite.materializers(events, {
     tables.cells.update({ position: newPosition }).where({ id }),
 
   // Execution materializers - DEPRECATED: Use execution queue events instead
-  'v1.CellExecutionRequested': ({ cellId, executionCount }) => [
+  'v1.CellExecutionRequested': ({ cellId, executionCount }) =>
     tables.cells.update({
       executionState: 'pending',
       executionCount
     }).where({ id: cellId }),
-    // Also create execution queue entry for new queue system
-    tables.executions.insert({
-      id: `exec-${cellId}-${executionCount}`,
-      cellId,
-      executionCount,
-      status: 'queued',
-      requestedBy: 'legacy-system',
-      createdAt: new Date(),
-      timeoutAfter: new Date(Date.now() + 5 * 60 * 1000), // 5 minute timeout
-    }),
-  ],
 
-  'v1.CellExecutionStarted': ({ cellId, executionCount }) => [
+  'v1.CellExecutionStarted': ({ cellId, executionCount, startedAt }) => [
     tables.cells.update({ executionState: 'running' }).where({ id: cellId }),
     // Update execution queue
     tables.executions.update({
       status: 'running',
-      startedAt: new Date(),
+      startedAt,
     }).where({ cellId, executionCount }),
   ],
 

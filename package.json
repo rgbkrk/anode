@@ -18,6 +18,7 @@
     "build:schema": "pnpm --filter @anode/schema build",
     "clean": "pnpm --recursive --filter='@anode/*' clean",
     "clean-store": "node scripts/clean-store.js",
+    "full-reset": "node scripts/full-reset.js",
     "cleanup-queue": "pnpm --filter @anode/dev-server-kernel-ls-client cleanup-state",
     "monitor-queue": "pnpm --filter @anode/dev-server-kernel-ls-client monitor-queue",
     "install:all": "pnpm install",

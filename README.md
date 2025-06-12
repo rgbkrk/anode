@@ -39,7 +39,7 @@ pnpm install
 ./start-dev.sh
 
 # OR start services individually for debugging
-pnpm build:schema                    # Required first
+pnpm build:schema           # Required first
 pnpm run dev:sync-only      # Sync server (port 8787)
 pnpm run dev:web-only       # Web app (port 5173)
 
@@ -106,20 +106,6 @@ STORE_ID=test-store pnpm run dev:kernel
 ## 🔄 **Development Workflow**
 
 ### **Making Changes**
-
-```bash
-# Work on schema (affects all packages)
-pnpm --filter @anode/schema dev
-
-# Work on frontend only
-pnpm --filter @anode/web-client dev
-
-# Work on kernel process
-NOTEBOOK_ID=my-notebook pnpm --filter @anode/dev-server-kernel-ls-client dev
-
-# Work on sync server
-pnpm --filter @anode/docworker dev
-```
 
 ### **Testing End-to-End Flow**
 
