@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@anode/schema": "workspace:*",
-    "@livestore/sync-cf": "catalog:"
+    "@livestore/sync-cf": "workspace:*"
   },
   "devDependencies": {
     "wrangler": "catalog:"

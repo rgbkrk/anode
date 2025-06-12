@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@anode/schema": "workspace:*",
-    "@livestore/adapter-web": "catalog:",
-    "@livestore/react": "catalog:",
-    "@livestore/livestore": "catalog:",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/livestore": "workspace:*",
     "@livestore/wa-sqlite": "catalog:",
-    "@livestore/webmesh": "catalog:",
+    "@livestore/webmesh": "workspace:*",
     "@overengineering/fps-meter": "^0.1.2",
     "@radix-ui/react-dropdown-menu": "catalog:",
     "@radix-ui/react-separator": "catalog:",
@@ -26,7 +26,7 @@
     "react-dom": "catalog:",
     "tailwind-merge": "catalog:",
     "tw-animate-css": "catalog:",
-    "@livestore/sync-cf": "catalog:"
+    "@livestore/sync-cf": "workspace:*"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "catalog:",

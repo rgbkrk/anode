@@ -10,13 +10,14 @@
     "clean": "rm -rf dist",
     "watch": "tsx watch src/index.ts",
     "cleanup-state": "tsx src/cleanup-state.ts",
-    "monitor-queue": "tsx src/monitor-queue.ts"
+    "monitor-queue": "tsx src/monitor-queue.ts",
+    "debug": "DEBUG=* tsx src/index.ts"
   },
   "dependencies": {
     "@anode/schema": "workspace:*",
-    "@livestore/adapter-node": "catalog:",
-    "@livestore/livestore": "catalog:",
-    "@livestore/sync-cf": "catalog:",
+    "@livestore/adapter-node": "workspace:",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
     "pyodide": "catalog:"
   },
   "devDependencies": {

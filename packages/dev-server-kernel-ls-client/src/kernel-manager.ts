@@ -96,21 +96,32 @@ export class KernelManager {
         // We could filter by notebook if we add that to executions table
       }).orderBy('createdAt', 'asc')
     );
+    console.debug('[KernelManager] queuedExecutions$:', queuedExecutions$);
 
     this.store.subscribe(queuedExecutions$, {
-      onUpdate: async (executions) => {
+      onUpdate: async (executionsRaw: any) => {
+        const executions = executionsRaw as typeof tables.executions.Type[];
+        console.debug('[KernelManager] onUpdate for queuedExecutions$', executions);
         if (this.isShuttingDown || executions.length === 0) return;
 
         // Only process executions for our notebook
-        const relevantExecutions = executions.filter(exec => {
-          const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0];
-          return cell?.notebookId === this.config.notebookId;
+        const relevantExecutions = executions.filter((exec: typeof tables.executions.Type) => {
+          const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0] as typeof tables.cells.Type | undefined;
+          const isRelevant = cell?.notebookId === this.config.notebookId;
+          if (!isRelevant) {
+            console.debug(`[KernelManager] Skipping execution ${exec.id} (cellId: ${exec.cellId}) not for notebook ${this.config.notebookId}`);
+          }
+          return isRelevant;
         });
 
-        if (relevantExecutions.length === 0) return;
+        if (relevantExecutions.length === 0) {
+          console.debug('[KernelManager] No relevant executions to claim.');
+          return;
+        }
 
         // Claim executions up to our batch size
         const toClaim = relevantExecutions.slice(0, this.config.claimBatchSize!);
+        console.debug(`[KernelManager] Claiming up to ${toClaim.length} executions:`, toClaim.map(e => e.id));
 
         for (const execution of toClaim) {
           await this.claimExecution(execution.id);
@@ -125,9 +136,12 @@ export class KernelManager {
         status: 'claimed',
       })
     );
+    console.debug('[KernelManager] claimedExecutions$:', claimedExecutions$);
 
     this.store.subscribe(claimedExecutions$, {
-      onUpdate: async (executions) => {
+      onUpdate: async (executionsRaw: any) => {
+        const executions = executionsRaw as typeof tables.executions.Type[];
+        console.debug('[KernelManager] onUpdate for claimedExecutions$', executions);
         for (const execution of executions) {
           await this.executeCell(execution);
         }

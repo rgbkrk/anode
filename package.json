@@ -11,7 +11,9 @@
     "build": "pnpm --recursive --filter='@anode/*' build",
     "dev": "pnpm build:schema && concurrently --names 'SCHEMA,DOCWORKER,WEB' --prefix-colors 'yellow,blue,green' 'pnpm --filter @anode/schema dev' 'pnpm --filter @anode/docworker dev' 'pnpm --filter @anode/web-client dev'",
     "dev:web-only": "pnpm --filter @anode/web-client dev",
+    "predev:kernel": "pnpm build:schema",
     "dev:kernel": "pnpm --filter @anode/dev-server-kernel-ls-client dev",
+    "predev:sync-only": "pnpm build:schema",
     "dev:sync-only": "pnpm --filter @anode/docworker dev",
     "build:schema": "pnpm --filter @anode/schema build",
     "clean": "pnpm --recursive --filter='@anode/*' clean",
@@ -57,6 +59,6 @@
   "author": "Anode Team",
   "license": "MIT",
   "dependencies": {
-    "@livestore/peer-deps": "catalog:"
+    "@livestore/peer-deps": "workspace:"
   }
 }
