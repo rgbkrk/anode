@@ -1,6 +1,6 @@
 # Execution Queue System
 
-This document explains the new robust execution queue system that replaced the previous ad-hoc cell execution approach.
+This document explains the robust execution queue system for reliable, fault-tolerant code execution with proper kernel management, timeout handling, and graceful failover between multiple kernel instances.
 
 ## Overview
 
@@ -12,7 +12,6 @@ The execution queue system provides reliable, fault-tolerant code execution with
 - **Robust timeout handling** - executions can't get permanently stuck
 - **Automatic failover** when kernels crash or become unresponsive
 - **Real-time monitoring** and observability
-- **Backward compatibility** with existing cell execution events
 
 ## Architecture
 
@@ -143,7 +142,6 @@ pnpm cleanup-queue
 Handles:
 - Dead kernels that stopped sending heartbeats
 - Stuck executions that exceeded timeouts
-- Legacy cell states from old system
 
 ## Configuration
 
@@ -189,14 +187,6 @@ const kernelManager = new KernelManager(store, {
 - **Atomic claiming**: Only one kernel can claim each execution
 - **Heartbeat enforcement**: Dead kernels can't claim new work
 - **Timeout cascade**: Stuck kernels are detected and isolated
-
-## Backward Compatibility
-
-The system maintains compatibility with legacy `cellExecutionRequested` events:
-
-1. Legacy events automatically create execution queue entries
-2. Old cell state management still works
-3. Both systems can run simultaneously during migration
 
 ## Troubleshooting
 
@@ -257,13 +247,3 @@ NOTEBOOK_ID=my-notebook pnpm dev:kernel
 - [ ] Cross-notebook kernel sharing
 - [ ] Execution result caching
 - [ ] Performance analytics dashboard
-
-## Migration from Legacy System
-
-The new system runs alongside the old one during transition:
-
-1. **Phase 1**: Deploy new system, legacy events create queue entries
-2. **Phase 2**: Update clients to use `executionQueued` events directly  
-3. **Phase 3**: Remove legacy `cellExecutionRequested` handling
-
-No downtime required - the migration is seamless.

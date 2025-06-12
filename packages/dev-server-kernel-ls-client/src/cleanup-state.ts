@@ -33,31 +33,22 @@ const store = await createStorePromise({
 
 console.log("✅ Store connected. Analyzing current state...");
 
-// Check current cell state (legacy system)
-const allCells = store.query(tables.cells);
-const stuckCells = allCells.filter(cell =>
-  cell.executionState === 'running' ||
-  cell.executionState === 'pending'
-);
-
 // Check execution queue state
-const allExecutions = store.query(tables.executions);
-const stuckExecutions = allExecutions.filter(execution =>
+const allExecutions = store.query(tables.executions) as typeof tables.executions.Type[];
+const stuckExecutions = allExecutions.filter((execution: typeof tables.executions.Type) =>
   execution.status === 'claimed' ||
   execution.status === 'running'
 );
 
 // Check kernel states
-const allKernels = store.query(tables.kernels);
-const deadKernels = allKernels.filter(kernel => {
+const allKernels = store.query(tables.kernels) as typeof tables.kernels.Type[];
+const deadKernels = allKernels.filter((kernel: typeof tables.kernels.Type) => {
   const now = new Date();
   const timeSinceHeartbeat = now.getTime() - kernel.lastHeartbeat.getTime();
   return kernel.status === 'active' && timeSinceHeartbeat > 2 * 60 * 1000; // 2 minutes
 });
 
 console.log(`📊 Current state analysis:`);
-console.log(`   - Total cells: ${allCells.length}`);
-console.log(`   - Stuck cells: ${stuckCells.length}`);
 console.log(`   - Total executions: ${allExecutions.length}`);
 console.log(`   - Stuck executions: ${stuckExecutions.length}`);
 console.log(`   - Total kernels: ${allKernels.length}`);
@@ -109,30 +100,6 @@ if (stuckExecutions.length > 0) {
   }
 }
 
-// 3. Clean up stuck cells (legacy system)
-if (stuckCells.length > 0) {
-  console.log("\n🔧 Fixing stuck cells (legacy):");
-
-  for (const cell of stuckCells) {
-    console.log(`   - Cell ${cell.id}: ${cell.executionState} -> completed`);
-
-    try {
-      // Reset to completed state and mark as error since execution was interrupted
-      store.commit(events.cellExecutionCompleted({
-        cellId: cell.id,
-        executionCount: cell.executionCount || 0,
-        completedAt: new Date(),
-        status: "error", // Mark as error since execution was interrupted
-      }));
-
-      totalFixed++;
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error(`   ❌ Failed to reset cell ${cell.id}:`, error);
-    }
-  }
-}
-
 if (totalFixed === 0) {
   console.log("🎉 No stuck states found! Everything is clean.");
 } else {
@@ -144,32 +111,23 @@ await new Promise(resolve => setTimeout(resolve, 3000));
 
 console.log("\n🔍 Verification:");
 
-// Verify cells
-const remainingStuckCells = store.query(tables.cells).filter(cell =>
-  cell.executionState === 'running' ||
-  cell.executionState === 'pending'
-);
-
 // Verify executions
-const remainingStuckExecutions = store.query(tables.executions).filter(execution =>
+const remainingStuckExecutions = (store.query(tables.executions) as typeof tables.executions.Type[]).filter((execution: typeof tables.executions.Type) =>
   execution.status === 'claimed' ||
   execution.status === 'running'
 );
 
 // Verify kernels
-const remainingDeadKernels = store.query(tables.kernels).filter(kernel => {
+const remainingDeadKernels = (store.query(tables.kernels) as typeof tables.kernels.Type[]).filter((kernel: typeof tables.kernels.Type) => {
   const now = new Date();
   const timeSinceHeartbeat = now.getTime() - kernel.lastHeartbeat.getTime();
   return kernel.status === 'active' && timeSinceHeartbeat > 2 * 60 * 1000;
 });
 
-const totalRemaining = remainingStuckCells.length + remainingStuckExecutions.length + remainingDeadKernels.length;
+const totalRemaining = remainingStuckExecutions.length + remainingDeadKernels.length;
 
 if (totalRemaining > 0) {
   console.log(`⚠️ Warning: ${totalRemaining} items still stuck after cleanup:`);
-  if (remainingStuckCells.length > 0) {
-    console.log(`   - ${remainingStuckCells.length} stuck cells`);
-  }
   if (remainingStuckExecutions.length > 0) {
     console.log(`   - ${remainingStuckExecutions.length} stuck executions`);
   }

@@ -99,14 +99,6 @@ export const Cell: React.FC<CellProps> = ({
         timeoutAfter: new Date(now.getTime() + 5 * 60 * 1000), // 5 minute timeout
       }))
 
-      // Also emit legacy event for backward compatibility
-      store.commit(events.cellExecutionRequested({
-        cellId: cell.id,
-        notebookId: cell.notebookId,
-        requestedBy: 'current-user',
-        executionCount: executionCount,
-      }))
-
       console.log('✅ Execution queued via execution queue system')
 
       // The kernel service will now:

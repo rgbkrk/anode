@@ -47,61 +47,13 @@ const kernelManager = new KernelManager(store, {
 
 await kernelManager.initialize();
 
-console.log("✅ Kernel manager ready. Setting up legacy event compatibility...");
-
-// For backward compatibility, still listen to legacy cellExecutionRequested events
-// and convert them to the new execution queue system
-const legacyExecutionRequests$ = store.query(
-  tables.cells.where({
-    executionState: 'pending'
-  }).orderBy('executionCount', 'desc')
-);
-
-store.subscribe(legacyExecutionRequests$, {
-  onUpdate: async (cells) => {
-    if (cells.length === 0) return;
-
-    console.log(`🔄 Processing ${cells.length} legacy execution requests`);
-
-    for (const cell of cells) {
-      if (!cell.executionCount) continue;
-
-      // Check if we already have an execution queue entry for this
-      const existingExecution = store.query(
-        tables.executions.where({
-          cellId: cell.id,
-          executionCount: cell.executionCount,
-        }).limit(1)
-      )[0];
-
-      if (existingExecution) {
-        console.log(`⏭️ Execution already queued: ${cell.id}#${cell.executionCount}`);
-        continue;
-      }
-
-      // Create execution queue entry
-      const executionId = `exec-${cell.id}-${cell.executionCount}`;
-      const now = new Date();
-
-      console.log(`📥 Queueing legacy execution: ${executionId}`);
-
-      store.commit(events.executionQueued({
-        id: executionId,
-        cellId: cell.id,
-        executionCount: cell.executionCount,
-        requestedBy: 'legacy-system',
-        queuedAt: now,
-        timeoutAfter: new Date(now.getTime() + 5 * 60 * 1000), // 5 minute timeout
-      }));
-    }
-  }
-});
+console.log("✅ Kernel manager ready.");
 
 // Debug: Check what's in the store initially
-const allNotebooks = store.query(tables.notebooks);
-const allCells = store.query(tables.cells);
-const allKernels = store.query(tables.kernels);
-const allExecutions = store.query(tables.executions);
+const allNotebooks = store.query(tables.notebooks) as typeof tables.notebooks.Type[];
+const allCells = store.query(tables.cells) as typeof tables.cells.Type[];
+const allKernels = store.query(tables.kernels) as typeof tables.kernels.Type[];
+const allExecutions = store.query(tables.executions) as typeof tables.executions.Type[];
 
 console.log(`📊 Initial store state:`);
 console.log(`   - Notebooks: ${allNotebooks.length}`);
