@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@anode/schema": "workspace:*",
-    "@livestore/adapter-node": "workspace:",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
+    "@livestore/adapter-node": "catalog:",
+    "@livestore/livestore": "catalog:",
+    "@livestore/sync-cf": "catalog:",
     "pyodide": "catalog:"
   },
   "devDependencies": {

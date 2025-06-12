@@ -59,6 +59,6 @@
   "author": "Anode Team",
   "license": "MIT",
   "dependencies": {
-    "@livestore/peer-deps": "workspace:"
+    "@livestore/peer-deps": "catalog:"
   }
 }

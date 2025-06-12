@@ -13,7 +13,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@livestore/livestore": "workspace:*",
+    "@livestore/livestore": "catalog:",
     "@effect/schema": "catalog:",
     "effect": "catalog:"
   },

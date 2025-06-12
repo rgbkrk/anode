@@ -1,19 +1,19 @@
 packages:
   - packages/*
-  - /Users/kylekelley/code/src/github.com/livestorejs/livestore/packages/@livestore/*
+  # - /Users/kylekelley/code/src/github.com/livestorejs/livestore/packages/@livestore/*
 
 catalog:
-  # "@livestore/livestore": workspace:*
-  # "@livestore/adapter-web": workspace:*
-  # "@livestore/adapter-node": workspace:*
-  # "@livestore/react": workspace:*
-  # "@livestore/sync-cf": workspace:*
-  # "@livestore/utils": workspace:*
-  # "@livestore/common": workspace:*
-  # "@livestore/peer-deps": workspace:*
+  "@livestore/livestore": ^0.3.1
+  "@livestore/adapter-web": ^0.3.1
+  "@livestore/adapter-node": ^0.3.1
+  "@livestore/react": ^0.3.1
+  "@livestore/sync-cf": ^0.3.1
+  "@livestore/utils": ^0.3.1
+  "@livestore/common": ^0.3.1
+  "@livestore/peer-deps": ^0.3.1
   "@livestore/devtools-vite": ^0.3.1
   "@livestore/wa-sqlite": 1.0.5-dev.2
-  # "@livestore/webmesh": workspace:*
+  "@livestore/webmesh": ^0.3.1
   effect: 3.15.5
   "@effect/platform": 0.82.4
   "@effect/platform-node": 0.73.4
