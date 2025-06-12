@@ -21,19 +21,19 @@ graph TB
     ES -->|queued executions| KM1[Kernel Manager 1]
     ES -->|queued executions| KM2[Kernel Manager 2]
     ES -->|queued executions| KM3[Kernel Manager N...]
-    
+
     KM1 -->|executionClaimed| ES
     KM2 -->|executionClaimed| ES
     KM3 -->|executionClaimed| ES
-    
+
     KM1 -->|heartbeat| ES
     KM2 -->|heartbeat| ES
     KM3 -->|heartbeat| ES
-    
+
     KM1 -->|results| WC
     KM2 -->|results| WC
     KM3 -->|results| WC
-    
+
     ES -->|timeout detection| ES
 ```
 
@@ -114,7 +114,7 @@ Handles the complete kernel lifecycle:
    ```bash
    # Terminal 1
    NOTEBOOK_ID=my-notebook pnpm dev:kernel
-   
+
    # Terminal 2 (optional - multiple kernels for load balancing)
    NOTEBOOK_ID=my-notebook pnpm dev:kernel
    ```

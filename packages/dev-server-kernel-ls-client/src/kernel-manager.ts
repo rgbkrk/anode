@@ -1,4 +1,4 @@
-import { Store } from '@livestore/livestore';
+import { Store, queryDb } from '@livestore/livestore';
 import { events, tables } from '@anode/schema';
 import { PyodideKernel } from './pyodide-kernel.js';
 
@@ -90,24 +90,22 @@ export class KernelManager {
 
   private startExecutionMonitoring(): void {
     // Subscribe to queued executions for this notebook
-    const queuedExecutions$ = this.store.query(
+    const queuedExecutions$ = queryDb(
       tables.executions.where({
         status: 'queued',
         // We could filter by notebook if we add that to executions table
       }).orderBy('createdAt', 'asc')
     );
-    console.debug('[KernelManager] queuedExecutions$:', queuedExecutions$);
-
     this.store.subscribe(queuedExecutions$, {
-      onUpdate: async (executionsRaw: any) => {
-        const executions = executionsRaw as typeof tables.executions.Type[];
-        console.debug('[KernelManager] onUpdate for queuedExecutions$', executions);
-        if (this.isShuttingDown || executions.length === 0) return;
+        onUpdate: async (executionsRaw: any) => {
+          const executions = executionsRaw as typeof tables.executions.Type[];
+          console.debug('[KernelManager] onUpdate for queuedExecutions$', executions);
+          if (this.isShuttingDown || executions.length === 0) return;
 
-        // Only process executions for our notebook
-        const relevantExecutions = executions.filter((exec: typeof tables.executions.Type) => {
-          const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0] as typeof tables.cells.Type | undefined;
-          const isRelevant = cell?.notebookId === this.config.notebookId;
+          // Only process executions for our notebook
+          const relevantExecutions = executions.filter((exec: typeof tables.executions.Type) => {
+            const cell = this.store.query(tables.cells.where({ id: exec.cellId }).limit(1))[0] as typeof tables.cells.Type | undefined;
+            const isRelevant = cell?.notebookId === this.config.notebookId;
           if (!isRelevant) {
             console.debug(`[KernelManager] Skipping execution ${exec.id} (cellId: ${exec.cellId}) not for notebook ${this.config.notebookId}`);
           }
@@ -130,14 +128,12 @@ export class KernelManager {
     });
 
     // Subscribe to executions claimed by this kernel
-    const claimedExecutions$ = this.store.query(
+    const claimedExecutions$ = queryDb(
       tables.executions.where({
         claimedBy: this.kernelId,
         status: 'claimed',
       })
     );
-    console.debug('[KernelManager] claimedExecutions$:', claimedExecutions$);
-
     this.store.subscribe(claimedExecutions$, {
       onUpdate: async (executionsRaw: any) => {
         const executions = executionsRaw as typeof tables.executions.Type[];
