@@ -148,7 +148,6 @@ anode/
 ## Documentation
 
 - [Quick Start](docs/quick-start.md) - Get running quickly
-- [Development Setup](docs/development-setup.md) - Complete dev environment
 - [Execution Queue](docs/execution-queue.md) - Code execution system
 - [Troubleshooting](docs/troubleshooting.md) - Common issues
 - [ROADMAP.md](ROADMAP.md) - Future plans and known gaps
