@@ -41,12 +41,6 @@ pnpm dev:kernel
 ```bash
 # Start Deno kernel from project root
 NOTEBOOK_ID=your-notebook-id pnpm dev:kernel:deno
-
-# Or use the wrapper script directly (cross-platform)
-NOTEBOOK_ID=your-notebook-id ./scripts/deno-kernel.sh start
-
-# Windows users
-set NOTEBOOK_ID=your-notebook-id && scripts\deno-kernel.bat start
 ```
 
 **Important**: Always use the kernel command suggested in the notebook UI for proper notebook ID matching.
@@ -121,9 +115,7 @@ pnpm deno:migrate           # Migrate from Node.js to Deno kernel
 pnpm deno:test              # Run Deno kernel tests
 pnpm deno:check             # Type check Deno kernel
 
-# Cross-platform Deno kernel wrapper
-./scripts/deno-kernel.sh help              # Unix/Mac help
-scripts\deno-kernel.bat help               # Windows help
+
 
 # Utilities
 pnpm reset-storage          # Clear all local data
@@ -154,7 +146,7 @@ See [ROADMAP.md](./ROADMAP.md) for detailed development plans and milestones.
 | AI cells showing mock responses | Uncomment and set `OPENAI_API_KEY` in `.env`, restart kernel |
 | Stale state | Run `pnpm reset-storage` |
 | Slow execution | Should be instant - check kernel logs |
-| Deno kernel not starting | Check `NOTEBOOK_ID` is set: `./scripts/deno-kernel.sh help` |
+| Deno kernel not starting | Check `NOTEBOOK_ID` is set and Deno is installed |
 | Missing Deno | Install from https://deno.land/ |
 
 ## Architecture Highlights
