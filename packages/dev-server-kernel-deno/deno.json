@@ -1,0 +1,52 @@
+{
+  "name": "@anode/dev-server-kernel-deno",
+  "version": "0.1.0",
+  "exports": "./src/index.ts",
+  "tasks": {
+    "start": "deno run --allow-all src/index.ts",
+    "dev": "deno run --allow-all --watch src/index.ts",
+    "cache-cli": "deno run --allow-all src/cache-cli.ts",
+    "cache:warm-up": "deno run --allow-all src/cache-cli.ts warm-up --essential",
+    "cache:warm-up:common": "deno run --allow-all src/cache-cli.ts warm-up --common",
+    "cache:stats": "deno run --allow-all src/cache-cli.ts stats",
+    "cache:list": "deno run --allow-all src/cache-cli.ts list",
+    "cache:clear": "deno run --allow-all src/cache-cli.ts clear",
+    "cache:cleanup": "deno run --allow-all src/cache-cli.ts cleanup",
+    "type-check": "deno check src/*.ts",
+    "test": "deno test --allow-all",
+    "test:unit": "deno test --allow-all --ignore=**/pyodide-cache-integration.test.ts",
+    "test:integration": "INTEGRATION_TESTS=true deno test --allow-all pyodide-cache-integration.test.ts"
+  },
+  "imports": {
+    "@livestore/adapter-node": "npm:@livestore/adapter-node@^0.3.1",
+    "@livestore/livestore": "npm:@livestore/livestore@^0.3.1",
+    "@livestore/sync-cf": "npm:@livestore/sync-cf@^0.3.1",
+    "pyodide": "npm:pyodide@^0.27.7",
+    "pyodide/pyodide.js": "npm:pyodide@^0.27.7/pyodide.js",
+    "openai": "jsr:@openai/openai@^4.0.0",
+    "@std/path": "jsr:@std/path@^1.0.0",
+    "@std/fs": "jsr:@std/fs@^1.0.0",
+    "@std/crypto": "jsr:@std/crypto@^1.0.0",
+    "@std/http": "jsr:@std/http@^1.0.0",
+    "@std/cli": "jsr:@std/cli@^1.0.0"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve"
+  },
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "es6", "deno.ns"],
+    "strict": true
+  },
+  "exclude": ["node_modules", "dist"]
+}
