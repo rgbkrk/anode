@@ -18,7 +18,7 @@ const NOTEBOOK_ID = process.env.NOTEBOOK_ID ?? "demo-notebook";
 const AUTH_TOKEN = process.env.AUTH_TOKEN ?? "insecure-token-change-me";
 const SYNC_URL = process.env.LIVESTORE_SYNC_URL ?? "ws://localhost:8787";
 const KERNEL_ID = process.env.KERNEL_ID ?? `kernel-${process.pid}`;
-const INITIAL_SYNC_DELAY = parseInt(process.env.INITIAL_SYNC_DELAY ?? "2000");
+const INITIAL_SYNC_DELAY = parseInt(process.env.INITIAL_SYNC_DELAY ?? "229");
 
 // Generate unique session ID for this kernel instance
 const SESSION_ID = `${KERNEL_ID}-${Date.now()}-${Math.random().toString(36).slice(2)}`;

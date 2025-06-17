@@ -93,7 +93,6 @@ The kernel operates on LiveStore events rather than HTTP requests:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3001` | HTTP server port (health checks only) |
 | `NOTEBOOK_ID` | `demo-notebook` | Notebook to serve |
 | `KERNEL_ID` | `kernel-{pid}` | Unique kernel identifier |
 | `LIVESTORE_SYNC_URL` | `ws://localhost:8787` | LiveStore sync server |
