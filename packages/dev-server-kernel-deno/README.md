@@ -6,7 +6,7 @@ A high-performance Python execution kernel for Anode notebooks, built with Deno 
 
 This is a migration from the Node.js-based kernel to Deno, providing:
 - **Better WASM Support**: Native WebAssembly optimization for Pyodide
-- **Modern APIs**: Built-in HTTP server, crypto, and file system APIs
+- **Modern APIs**: Built-in crypto and file system APIs
 - **Zero Config**: No build step required, direct TypeScript execution
 - **Security**: Explicit permissions model
 - **Performance**: V8 optimizations and faster startup times
@@ -99,7 +99,7 @@ The kernel operates on LiveStore events rather than HTTP requests:
 | `LIVESTORE_SYNC_URL` | `ws://localhost:8787` | LiveStore sync server |
 | `AUTH_TOKEN` | `insecure-token-change-me` | Authentication token |
 | `OPENAI_API_KEY` | _(unset)_ | OpenAI API key for real AI responses |
-| `INITIAL_SYNC_DELAY` | `2000` | Delay before first event (ms) |
+| `INITIAL_SYNC_DELAY` | `229` | Delay before first event (ms) |
 
 ### Deno Permissions
 
@@ -110,14 +110,9 @@ The kernel requires the following permissions:
 - `--allow-env`: Access environment variables
 - `--allow-run`: Execute subprocesses (if needed)
 
-## API Endpoints
+## Architecture
 
-The kernel provides minimal HTTP endpoints for monitoring:
-
-- `GET /health`: Health check with service status
-- `GET /status`: Detailed service information including memory usage
-
-**Note**: Code execution happens via LiveStore events, not HTTP endpoints.
+The kernel is purely reactive and communicates only via LiveStore events. There are no HTTP endpoints - all execution happens through event-driven subscriptions.
 
 ## Package Caching
 
@@ -246,8 +241,8 @@ deno run --allow-all src/index.ts
 
 **Sync connection issues**
 ```bash
-# Check LiveStore sync server
-curl http://localhost:8787/health
+# Check LiveStore sync server is running
+pnpm dev
 ```
 
 **OpenAI API errors**
