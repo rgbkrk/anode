@@ -9,6 +9,7 @@ This directory contains comprehensive documentation for the Anode project - a re
 - **[Display Examples](./display-examples.md)** - Practical examples and usage patterns for rich outputs
 - **[UI Design](./ui-design.md)** - Design principles and interface guidelines
 - **[AI Features](./ai-features.md)** - AI integration setup and capabilities
+- **[Pyodide (Deno Runtime)](./pyodide-deno.md)** - Pyodide kernel running on Deno with superior WASM support
 - **[Testing](./testing.md)** - Testing strategy and current gaps
 
 ### 📋 Proposals
@@ -68,6 +69,7 @@ Core collaborative editing, Python execution, and basic AI integration functiona
 docs/
 ├── README.md                 # This file - documentation index
 ├── ai-features.md           # AI integration setup and capabilities
+├── pyodide-deno.md          # Pyodide kernel running on Deno runtime
 ├── display-system.md        # Display system architecture (aspirational)
 ├── testing.md              # Testing strategy and current gaps
 ├── display-examples.md      # Practical usage examples
@@ -85,9 +87,10 @@ docs/
 
 **Getting Started:**
 1. Read [ai-features.md](./ai-features.md) for AI setup and current capabilities
-2. Check [testing.md](./testing.md) for current test strategy and gaps
-3. Review [display-system.md](./display-system.md) for architecture goals
-4. See [ui-design.md](./ui-design.md) for interface patterns
+2. Check [pyodide-deno.md](./pyodide-deno.md) for Pyodide kernel with Deno runtime
+3. Review [testing.md](./testing.md) for current test strategy and gaps
+4. See [display-system.md](./display-system.md) for architecture goals
+5. Check [ui-design.md](./ui-design.md) for interface patterns
 
 **Key Files:**
 - `packages/dev-server-kernel-ls-client/src/pyodide-kernel.ts` - Python execution kernel
@@ -100,11 +103,13 @@ docs/
 ```bash
 # Start development environment
 pnpm dev                 # Web client + sync backend
-NOTEBOOK_ID=test pnpm dev:kernel  # Python kernel (manual per notebook)
+NOTEBOOK_ID=test pnpm dev:kernel      # Pyodide kernel on Node.js runtime (manual per notebook)
+NOTEBOOK_ID=test pnpm dev:kernel:deno # Pyodide kernel on Deno runtime (better WASM support)
 
 # Testing
 pnpm test               # Current test suite (mostly smoke tests)
 pnpm test:kernel        # Kernel tests (mocked Pyodide)
+pnpm deno:test          # Pyodide kernel (Deno runtime) test suite
 ```
 
 ### 🧠 Design Philosophy

@@ -52,7 +52,7 @@
     "deno:migrate": "cd packages/dev-server-kernel-deno && deno run --allow-all migrate.ts",
     "deno:test": "cd packages/dev-server-kernel-deno && deno run --allow-all test-kernel.ts",
     "deno:check": "cd packages/dev-server-kernel-deno && deno check src/*.ts",
-    "start": "echo 'Use pnpm dev to start core services. For Python execution:\\n  Node.js kernel: NOTEBOOK_ID=your-notebook-id pnpm dev:kernel\\n  Deno kernel: NOTEBOOK_ID=your-notebook-id pnpm dev:kernel:deno'"
+    "start": "echo 'Use pnpm dev to start core services. For Python execution:\\n  Pyodide on Node.js runtime: NOTEBOOK_ID=your-notebook-id pnpm dev:kernel\\n  Pyodide on Deno runtime: NOTEBOOK_ID=your-notebook-id pnpm dev:kernel:deno'"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",

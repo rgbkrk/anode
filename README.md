@@ -37,9 +37,9 @@ pnpm dev  # Starts web client + sync backend
 pnpm dev:kernel
 ```
 
-#### Option B: Deno Kernel (Better WASM Support)
+#### Option B: Pyodide on Deno Runtime (Better WASM Support)
 ```bash
-# Start Deno kernel from project root
+# Start Pyodide kernel using Deno runtime from project root
 NOTEBOOK_ID=your-notebook-id pnpm dev:kernel:deno
 ```
 
@@ -105,15 +105,15 @@ NOTEBOOK_ID=your-notebook-id pnpm dev:kernel
 pnpm dev                 # Start web + sync
 
 # Python execution kernels
-NOTEBOOK_ID=notebook-id-from-ui pnpm dev:kernel        # Node.js kernel (default)
-NOTEBOOK_ID=notebook-id-from-ui pnpm dev:kernel:deno   # Deno kernel (better WASM)
+NOTEBOOK_ID=notebook-id-from-ui pnpm dev:kernel        # Pyodide on Node.js runtime (default)
+NOTEBOOK_ID=notebook-id-from-ui pnpm dev:kernel:deno   # Pyodide on Deno runtime (better WASM)
 
-# Deno kernel utilities (can run from project root)
+# Deno runtime utilities (can run from project root)
 pnpm cache:deno:warm-up     # Pre-warm Pyodide package cache
 pnpm cache:deno:stats       # Show cache statistics  
-pnpm deno:migrate           # Migrate from Node.js to Deno kernel
-pnpm deno:test              # Run Deno kernel tests
-pnpm deno:check             # Type check Deno kernel
+pnpm deno:migrate           # Migrate from Node.js to Deno runtime
+pnpm deno:test              # Run Pyodide kernel (Deno runtime) tests
+pnpm deno:check             # Type check Pyodide kernel code
 
 
 
@@ -146,7 +146,7 @@ See [ROADMAP.md](./ROADMAP.md) for detailed development plans and milestones.
 | AI cells showing mock responses | Uncomment and set `OPENAI_API_KEY` in `.env`, restart kernel |
 | Stale state | Run `pnpm reset-storage` |
 | Slow execution | Should be instant - check kernel logs |
-| Deno kernel not starting | Check `NOTEBOOK_ID` is set and Deno is installed |
+| Pyodide (Deno runtime) not starting | Check `NOTEBOOK_ID` is set and Deno is installed |
 | Missing Deno | Install from https://deno.land/ |
 
 ## Architecture Highlights
@@ -159,9 +159,9 @@ See [ROADMAP.md](./ROADMAP.md) for detailed development plans and milestones.
 
 **Local-First Design**: Everything works offline first, syncs when connected. Your work is never lost.
 
-**Modular Kernel System**: Python execution runs in separate processes that can be started per notebook as needed. Choose between Node.js or Deno kernels based on your needs.
+**Modular Kernel System**: Python execution runs in separate processes that can be started per notebook as needed. Choose between Node.js or Deno runtime for the Pyodide kernel based on your needs.
 
-**Deno Kernel Benefits**: Superior WebAssembly support for Pyodide, modern APIs, faster startup times, and better security model.
+**Deno Runtime Benefits**: Superior WebAssembly support for Pyodide, modern APIs, faster startup times, and better security model.
 
 ## Documentation
 
