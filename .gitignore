@@ -149,3 +149,7 @@ pyodide-cache/
 
 # LiveStore tmp directories
 tmp/
+
+# Deno specific
+.deno/
+deno.lock

@@ -16,6 +16,7 @@
     "declarationMap": true
   },
   "files": [],
+  "exclude": ["packages/dev-server-kernel-deno/**/*"],
   "references": [
     { "path": "./packages/web-client" },
     { "path": "./packages/docworker" },

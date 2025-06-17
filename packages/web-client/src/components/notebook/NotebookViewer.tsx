@@ -29,7 +29,7 @@ export const NotebookViewer: React.FC<NotebookViewerProps> = ({ onNewNotebook })
   const [focusedCellId, setFocusedCellId] = React.useState<string | null>(null)
 
   const currentNotebookId = getCurrentNotebookId()
-  const kernelCommand = `NOTEBOOK_ID=${currentNotebookId} pnpm dev:kernel`
+  const kernelCommand = `NOTEBOOK_ID=${currentNotebookId} pnpm dev:kernel:deno`
 
   // Check kernel status
   const activeKernel = kernelSessions.find((session: KernelSessionData) => session.status === 'ready')

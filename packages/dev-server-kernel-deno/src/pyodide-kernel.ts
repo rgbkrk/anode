@@ -1,7 +1,7 @@
 // TODO: Pyodide v0.27.7 has import path issues in Node.js environments
 // The package expects files in src/js/ which don't exist in the npm package structure
 // This affects integration tests but the kernel should work in browser environments
-import pyodideModule from "npm:pyodide/pyodide.js";
+import { loadPyodide } from "npm:pyodide";
 import {
   OutputType,
   ErrorOutputData,
@@ -53,7 +53,7 @@ export class PyodideKernel {
       console.log(`📦 Will load packages: ${essentialPackages.join(", ")}`);
 
       // Use modern Deno + Pyodide loading approach
-      this.pyodide = await pyodideModule.loadPyodide({
+      this.pyodide = await loadPyodide({
         ...cacheConfig, // Cache packages locally for faster subsequent loads
         stdout: (text: string) => {
           console.log("[py stdout]:", text);
@@ -244,23 +244,22 @@ shell.display_pub.js_callback = js_display_callback
 shell.displayhook.js_callback = js_execution_callback
 `);
 
-      // Execute the code directly using shell.run_cell function
+      // Execute the code using runPythonAsync to enable async features like networking
       try {
-        const runCell = this.pyodide!.globals.get("shell").run_cell;
-        const execResult = await runCell(code, { store_history: true });
+        // Store the code in a Python variable to avoid quoting issues
+        this.pyodide!.globals.set("user_code", code);
 
-        // Check for errors in the execution result
-        if (execResult.error_before_exec) {
-          this.addError(
-            "PythonError",
-            execResult.error_before_exec.toString(),
-            [execResult.error_before_exec.toString()],
-          );
-        } else if (execResult.error_in_exec) {
-          this.addError("PythonError", execResult.error_in_exec.toString(), [
-            execResult.error_in_exec.toString(),
-          ]);
-        }
+        // Execute through IPython shell using runPythonAsync
+        await this.pyodide!.runPythonAsync(`
+# Execute user code through IPython shell to maintain display hooks
+result = shell.run_cell(user_code, store_history=True)
+
+# Check for execution errors and re-raise them so they're caught by runPythonAsync
+if result.error_before_exec:
+    raise result.error_before_exec
+elif result.error_in_exec:
+    raise result.error_in_exec
+`);
       } catch (pythonError: any) {
         // Handle any Python exceptions during execution
         this.addError(
