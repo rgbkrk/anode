@@ -114,85 +114,39 @@ export const RichOutput: React.FC<RichOutputProps> = ({
 
     switch (mediaType) {
       case "application/vnd.jupyter.widget-view+json":
-        const widgetData = outputData[mediaType] as any;
+        const widgetViewData = outputData[mediaType] as any;
 
-        console.log("widgetData", widgetData);
+        console.log("widgetViewData", widgetViewData);
         console.log(
           "Entire payload",
           outputData["application/vnd.jupyter.widget-state+json"]
         );
 
-      case "application/vnd.jupyter.widget-view+json":
-        const widgetData = outputData[mediaType] as any;
+      switch (mediaType) {
+        case "application/vnd.jupyter.widget-view+json":
+          const widgetData = outputData[mediaType] as any;
 
-        // Debug logging
-        console.log("🔍 Anywidget Debug - Full outputData:", outputData);
-        console.log("🔍 Anywidget Debug - Widget data:", widgetData);
-        console.log(
-          "🔍 Anywidget Debug - Available MIME types:",
-          Object.keys(outputData)
-        );
+          if (!widgetData?.model_id) {
+            return (
+              <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                Invalid anywidget data: missing model_id
+              </div>
+            );
+          }
 
-        if (!widgetData?.model_id) {
+          // For now, create a simple placeholder that shows we detect anywidgets
+          // The ESM will be loaded via LiveStore events from the Python runtime
           return (
-            <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              Invalid anywidget data: missing model_id
-              <details className="mt-2">
-                <summary>Debug Info</summary>
-                <pre className="text-xs">
-                  {JSON.stringify(outputData, null, 2)}
-                </pre>
-              </details>
+            <div className="border border-blue-200 bg-blue-50 p-4 rounded">
+              <h4 className="font-semibold text-blue-800 mb-2">Anywidget Detected</h4>
+              <p className="text-blue-700 text-sm">
+                Model ID: <code className="bg-blue-100 px-1 rounded">{widgetData.model_id}</code>
+              </p>
+              <p className="text-blue-600 text-xs mt-2">
+                Integration in progress - ESM loading from LiveStore events
+              </p>
             </div>
           );
-        }
-
-        // Try multiple potential locations for ESM/CSS code
-        let esmCode =
-          outputData["application/vnd.jupyter.widget-state+json"]?.state
-            ?._esm ||
-          widgetData._esm ||
-          outputData._esm;
-
-        let cssCode =
-          outputData["application/vnd.jupyter.widget-state+json"]?.state
-            ?._css ||
-          widgetData._css ||
-          outputData._css;
-
-        console.log("🔍 Anywidget Debug - ESM code found:", !!esmCode);
-        console.log("🔍 Anywidget Debug - CSS code found:", !!cssCode);
-
-        if (!esmCode) {
-          return (
-            <div className="border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
-              Anywidget missing ESM code
-              <details className="mt-2">
-                <summary>Debug Info</summary>
-                <pre className="text-xs">
-                  Model ID: {widgetData.model_id}
-                  {"\n"}Available MIME types:{" "}
-                  {Object.keys(outputData).join(", ")}
-                  {"\n"}Widget data: {JSON.stringify(widgetData, null, 2)}
-                  {outputData["application/vnd.jupyter.widget-state+json"] &&
-                    `\nWidget state: ${JSON.stringify(outputData["application/vnd.jupyter.widget-state+json"], null, 2)}`}
-                </pre>
-              </details>
-            </div>
-          );
-        }
-
-        return (
-          <Suspense fallback={<LoadingSpinner />}>
-            <AnywidgetErrorBoundary>
-              <AnywidgetOutput
-                modelId={widgetData.model_id}
-                esmCode={esmCode}
-                cssCode={cssCode}
-              />
-            </AnywidgetErrorBoundary>
-          </Suspense>
-        );
 
       case "application/vnd.anode.aitool+json":
         return (
