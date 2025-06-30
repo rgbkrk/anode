@@ -7,6 +7,18 @@ import {
 } from "../outputs/index.js";
 import "../outputs/outputs.css";
 
+// Dynamic import for anywidget output
+const AnywidgetOutput = React.lazy(() =>
+  import("../anywidget/AnywidgetOutput.js").then((m) => ({
+    default: m.AnywidgetOutput,
+  }))
+);
+const AnywidgetErrorBoundary = React.lazy(() =>
+  import("../anywidget/AnywidgetOutput.js").then((m) => ({
+    default: m.AnywidgetErrorBoundary,
+  }))
+);
+
 // Dynamic imports for heavy components
 const MarkdownRenderer = React.lazy(() =>
   import("../outputs/MarkdownRenderer.js").then((m) => ({
@@ -59,6 +71,7 @@ export const RichOutput: React.FC<RichOutputProps> = ({
   // Determine the best media type to render, in order of preference
   const getPreferredMediaType = (): string | null => {
     const preferenceOrder = [
+      "application/vnd.jupyter.widget-view+json",
       "application/vnd.anode.aitool+json",
       "text/markdown",
       "text/html",
@@ -100,6 +113,42 @@ export const RichOutput: React.FC<RichOutputProps> = ({
     );
 
     switch (mediaType) {
+      case "application/vnd.jupyter.widget-view+json":
+        const widgetData = outputData[mediaType] as any;
+        if (!widgetData?.model_id) {
+          return (
+            <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Invalid anywidget data: missing model_id
+            </div>
+          );
+        }
+
+        // Extract ESM and CSS from the widget state or metadata
+        const esmCode =
+          outputData["application/vnd.jupyter.widget-state+json"]?.state?._esm;
+        const cssCode =
+          outputData["application/vnd.jupyter.widget-state+json"]?.state?._css;
+
+        if (!esmCode) {
+          return (
+            <div className="border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
+              Anywidget missing ESM code
+            </div>
+          );
+        }
+
+        return (
+          <Suspense fallback={<LoadingSpinner />}>
+            <AnywidgetErrorBoundary>
+              <AnywidgetOutput
+                modelId={widgetData.model_id}
+                esmCode={esmCode}
+                cssCode={cssCode}
+              />
+            </AnywidgetErrorBoundary>
+          </Suspense>
+        );
+
       case "application/vnd.anode.aitool+json":
         return (
           <Suspense fallback={<LoadingSpinner />}>
