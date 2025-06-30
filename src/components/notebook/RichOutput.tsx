@@ -7,18 +7,6 @@ import {
 } from "../outputs/index.js";
 import "../outputs/outputs.css";
 
-// Dynamic import for anywidget output
-const AnywidgetOutput = React.lazy(() =>
-  import("../anywidget/AnywidgetOutput.js").then((m) => ({
-    default: m.AnywidgetOutput,
-  }))
-);
-const AnywidgetErrorBoundary = React.lazy(() =>
-  import("../anywidget/AnywidgetOutput.js").then((m) => ({
-    default: m.AnywidgetErrorBoundary,
-  }))
-);
-
 // Dynamic imports for heavy components
 const MarkdownRenderer = React.lazy(() =>
   import("../outputs/MarkdownRenderer.js").then((m) => ({
@@ -114,39 +102,34 @@ export const RichOutput: React.FC<RichOutputProps> = ({
 
     switch (mediaType) {
       case "application/vnd.jupyter.widget-view+json":
-        const widgetViewData = outputData[mediaType] as any;
+        const widgetData = outputData[mediaType] as any;
 
-        console.log("widgetViewData", widgetViewData);
-        console.log(
-          "Entire payload",
-          outputData["application/vnd.jupyter.widget-state+json"]
-        );
-
-      switch (mediaType) {
-        case "application/vnd.jupyter.widget-view+json":
-          const widgetData = outputData[mediaType] as any;
-
-          if (!widgetData?.model_id) {
-            return (
-              <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                Invalid anywidget data: missing model_id
-              </div>
-            );
-          }
-
-          // For now, create a simple placeholder that shows we detect anywidgets
-          // The ESM will be loaded via LiveStore events from the Python runtime
+        if (!widgetData?.model_id) {
           return (
-            <div className="border border-blue-200 bg-blue-50 p-4 rounded">
-              <h4 className="font-semibold text-blue-800 mb-2">Anywidget Detected</h4>
-              <p className="text-blue-700 text-sm">
-                Model ID: <code className="bg-blue-100 px-1 rounded">{widgetData.model_id}</code>
-              </p>
-              <p className="text-blue-600 text-xs mt-2">
-                Integration in progress - ESM loading from LiveStore events
-              </p>
+            <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Invalid anywidget data: missing model_id
             </div>
           );
+        }
+
+        // For now, create a simple placeholder that shows we detect anywidgets
+        // The ESM will be loaded via LiveStore events from the Python runtime
+        return (
+          <div className="rounded border border-blue-200 bg-blue-50 p-4">
+            <h4 className="mb-2 font-semibold text-blue-800">
+              Anywidget Detected
+            </h4>
+            <p className="text-sm text-blue-700">
+              Model ID:{" "}
+              <code className="rounded bg-blue-100 px-1">
+                {widgetData.model_id}
+              </code>
+            </p>
+            <p className="mt-2 text-xs text-blue-600">
+              Integration in progress - ESM loading from LiveStore events
+            </p>
+          </div>
+        );
 
       case "application/vnd.anode.aitool+json":
         return (
