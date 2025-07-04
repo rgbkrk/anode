@@ -13,6 +13,7 @@ collaborative notebook system with AI integration.
 - **[AI Context Visibility](./ai-context-visibility.md)** - Context control
   implementation
 - **[Testing](./TESTING.md)** - Testing strategy and current gaps
+- **[Technologies](./technologies/README.md)** - Introduction to the various technologies used
 
 ### 📋 Proposals
 
