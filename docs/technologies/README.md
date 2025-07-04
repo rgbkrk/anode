@@ -3,3 +3,4 @@ The anode ecosystem uses several modern technologies together, in order to drive
 # Table Of Contents
 
 - [Deno: A typescript runtime, similar to node](./deno.md)
+- [Pyodide: Running python code in a javascript runtime](./pyodide.md)
